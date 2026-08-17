@@ -25,6 +25,9 @@ create table clients (
   address text,
   passport_number text,
   passport_expiry date,
+  father_name text,
+  mother_name text,
+  spouse_name text,
   flagged_for_followup boolean not null default false,
   notes text,
   created_at timestamptz not null default now()

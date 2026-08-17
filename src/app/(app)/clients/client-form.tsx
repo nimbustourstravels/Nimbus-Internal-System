@@ -12,6 +12,9 @@ type ClientRecord = {
   address: string | null;
   passport_number: string | null;
   passport_expiry: string | null;
+  father_name: string | null;
+  mother_name: string | null;
+  spouse_name: string | null;
   notes: string | null;
   flagged_for_followup: boolean;
 };
@@ -130,6 +133,42 @@ export function ClientForm({
             name="passport_expiry"
             type="date"
             defaultValue={initial?.passport_expiry ?? ""}
+            className={fieldClass}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className={labelClass} htmlFor="father_name">
+            Father&apos;s / legal guardian&apos;s name
+          </label>
+          <input
+            id="father_name"
+            name="father_name"
+            defaultValue={initial?.father_name ?? ""}
+            className={fieldClass}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className={labelClass} htmlFor="mother_name">
+            Mother&apos;s name
+          </label>
+          <input
+            id="mother_name"
+            name="mother_name"
+            defaultValue={initial?.mother_name ?? ""}
+            className={fieldClass}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className={labelClass} htmlFor="spouse_name">
+            Spouse&apos;s name
+          </label>
+          <input
+            id="spouse_name"
+            name="spouse_name"
+            defaultValue={initial?.spouse_name ?? ""}
             className={fieldClass}
           />
         </div>

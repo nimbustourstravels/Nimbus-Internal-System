@@ -10,43 +10,56 @@ type ScannedFields = {
   dob?: string;
   passport_number?: string;
   passport_expiry?: string;
+  address?: string;
+  father_name?: string;
+  mother_name?: string;
+  spouse_name?: string;
 };
 
-export function ScanAndCreate() {
+function ScanSlot({
+  id,
+  label,
+  hint,
+  endpoint,
+  onScanned,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  endpoint: string;
+  onScanned: (fields: Partial<ScannedFields>) => void;
+}) {
   const [scanning, setScanning] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
-  const [scanned, setScanned] = useState<ScannedFields | undefined>(undefined);
-  const [formKey, setFormKey] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setScanning(true);
-    setScanError(null);
+    setError(null);
+    setDone(false);
 
     const body = new FormData();
     body.append("file", file);
 
     try {
-      const res = await fetch("/api/ocr/passport", { method: "POST", body });
+      const res = await fetch(endpoint, { method: "POST", body });
       const json = await res.json();
 
       if (!res.ok) {
-        setScanError(json.error ?? "Could not scan this passport.");
+        setError(json.error ?? "Could not scan this page.");
         return;
       }
 
-      setScanned({
-        full_name: json.full_name ?? undefined,
-        nationality: json.nationality ?? undefined,
-        dob: json.dob ?? undefined,
-        passport_number: json.passport_number ?? undefined,
-        passport_expiry: json.passport_expiry ?? undefined,
-      });
-      setFormKey((k) => k + 1);
+      const cleaned = Object.fromEntries(
+        Object.entries(json).filter(([, v]) => v != null),
+      ) as Partial<ScannedFields>;
+      onScanned(cleaned);
+      setDone(true);
     } catch {
-      setScanError("Something went wrong scanning this image.");
+      setError("Something went wrong scanning this image.");
     } finally {
       setScanning(false);
       e.target.value = "";
@@ -54,31 +67,57 @@ export function ScanAndCreate() {
   }
 
   return (
+    <div className="flex-1 rounded-lg border border-dashed border-neutral-300 bg-white p-4">
+      <label className="text-sm font-medium text-neutral-700" htmlFor={id}>
+        {label}
+      </label>
+      <p className="mt-1 text-xs text-neutral-500">{hint}</p>
+      <input
+        id={id}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={scanning}
+        className="mt-2 text-sm"
+      />
+      {scanning && <p className="mt-2 text-sm text-neutral-500">Scanning…</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {done && !scanning && (
+        <p className="mt-2 text-sm text-green-700">Scanned — review the fields below.</p>
+      )}
+    </div>
+  );
+}
+
+export function ScanAndCreate() {
+  const [scanned, setScanned] = useState<ScannedFields | undefined>(undefined);
+  const [formKey, setFormKey] = useState(0);
+
+  function mergeScanned(fields: Partial<ScannedFields>) {
+    setScanned((prev) => ({ ...prev, ...fields }));
+    setFormKey((k) => k + 1);
+  }
+
+  return (
     <div>
-      <div className="max-w-2xl rounded-lg border border-dashed border-neutral-300 bg-white p-4">
-        <label className="text-sm font-medium text-neutral-700" htmlFor="passport-scan">
-          Scan passport to auto-fill (optional)
-        </label>
-        <p className="mt-1 text-xs text-neutral-500">
-          Upload a clear photo of the passport&apos;s photo page. Fields below will be
-          pre-filled — review them before saving.
-        </p>
-        <input
-          id="passport-scan"
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          disabled={scanning}
-          className="mt-2 text-sm"
+      <div className="flex max-w-3xl flex-col gap-4 sm:flex-row">
+        <ScanSlot
+          id="passport-scan-front"
+          label="Scan passport photo page (optional)"
+          hint="Photo + machine-readable lines at the bottom. Fills name, nationality, DOB, passport number, expiry."
+          endpoint="/api/ocr/passport"
+          onScanned={mergeScanned}
         />
-        {scanning && <p className="mt-2 text-sm text-neutral-500">Scanning…</p>}
-        {scanError && <p className="mt-2 text-sm text-red-600">{scanError}</p>}
-        {scanned && !scanning && (
-          <p className="mt-2 text-sm text-green-700">Scanned — review the fields below.</p>
-        )}
+        <ScanSlot
+          id="passport-scan-last"
+          label="Scan passport last / address page (optional)"
+          hint="Indian passports only. Fills address, father's/mother's/spouse's name — less precise, always double-check."
+          endpoint="/api/ocr/passport-last-page"
+          onScanned={mergeScanned}
+        />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 max-w-2xl">
         <ClientForm
           key={formKey}
           action={createClientRecord}
