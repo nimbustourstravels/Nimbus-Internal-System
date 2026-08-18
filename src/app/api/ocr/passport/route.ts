@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createWorker } from "tesseract.js";
 import { parse } from "mrz";
+import { ocrImageToText } from "@/lib/ocr-image";
 import { extractMrzLines, mrzDateToISO } from "./mrz-utils";
 
 export async function POST(request: NextRequest) {
@@ -13,13 +13,14 @@ export async function POST(request: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const worker = await createWorker("eng");
   let text: string;
   try {
-    const result = await worker.recognize(buffer);
-    text = result.data.text;
-  } finally {
-    await worker.terminate();
+    text = await ocrImageToText(buffer);
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not read this image." },
+      { status: 422 },
+    );
   }
 
   const mrzLines = extractMrzLines(text);
