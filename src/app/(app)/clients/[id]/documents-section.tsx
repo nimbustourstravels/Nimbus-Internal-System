@@ -42,6 +42,7 @@ export function DocumentsSection({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [rawScanText, setRawScanText] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -59,6 +60,7 @@ export function DocumentsSection({
     setUploading(true);
     setError(null);
     setNotice(null);
+    setRawScanText(null);
 
     const uploadFormData = new FormData();
     uploadFormData.append("file", file);
@@ -85,6 +87,7 @@ export function DocumentsSection({
           setNotice("Uploaded and scanned — client fields updated below, please review.");
         } else {
           setNotice(`Uploaded, but couldn't scan it: ${json.error ?? "unknown error"}`);
+          if (json.rawText) setRawScanText(json.rawText);
         }
       } catch {
         setNotice("Uploaded, but scanning failed.");
@@ -151,6 +154,16 @@ export function DocumentsSection({
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       {notice && <p className="mt-2 text-sm text-green-700">{notice}</p>}
+      {rawScanText && (
+        <details className="mt-2 max-w-2xl text-sm text-neutral-600">
+          <summary className="cursor-pointer text-neutral-500">
+            Show raw scanned text (didn&apos;t match any known field)
+          </summary>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-neutral-200 bg-neutral-50 p-2 text-xs">
+            {rawScanText}
+          </pre>
+        </details>
+      )}
 
       <ul className="mt-4 divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
         {documents.map((doc) => (

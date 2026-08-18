@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       {
         error:
           "Couldn't find any recognizable fields on this page. Make sure it's the address/last page and the photo is clear.",
+        rawText: text,
       },
       { status: 422 },
     );
