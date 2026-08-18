@@ -26,10 +26,17 @@ export default async function ClientProfilePage({
 
   const documentsWithUrls = await Promise.all(
     (documents ?? []).map(async (doc) => {
-      const { data: signed } = await supabase.storage
-        .from("client-documents")
-        .createSignedUrl(doc.storage_path, 60 * 10);
-      return { ...doc, url: signed?.signedUrl ?? null };
+      const [{ data: signed }, { data: signedDownload }] = await Promise.all([
+        supabase.storage.from("client-documents").createSignedUrl(doc.storage_path, 60 * 10),
+        supabase.storage
+          .from("client-documents")
+          .createSignedUrl(doc.storage_path, 60 * 10, { download: true }),
+      ]);
+      return {
+        ...doc,
+        url: signed?.signedUrl ?? null,
+        downloadUrl: signedDownload?.signedUrl ?? null,
+      };
     }),
   );
 
@@ -41,6 +48,7 @@ export default async function ClientProfilePage({
       </div>
 
       <ClientForm
+        key={JSON.stringify(client)}
         action={updateClientRecord.bind(null, client.id)}
         initial={client}
         submitLabel="Save changes"

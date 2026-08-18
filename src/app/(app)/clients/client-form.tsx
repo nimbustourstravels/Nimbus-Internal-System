@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import type { ClientFormState } from "./actions";
 
-type ClientRecord = {
+export type ClientRecord = {
   full_name: string;
   nationality: string | null;
   dob: string | null;

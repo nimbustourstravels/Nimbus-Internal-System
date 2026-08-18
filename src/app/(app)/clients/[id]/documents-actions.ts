@@ -47,6 +47,38 @@ export async function uploadDocument(
   return {};
 }
 
+const SCANNABLE_FIELDS = new Set([
+  "full_name",
+  "nationality",
+  "dob",
+  "passport_number",
+  "passport_expiry",
+  "address",
+  "father_name",
+  "mother_name",
+  "spouse_name",
+]);
+
+export async function applyScanToClient(clientId: string, fields: Record<string, unknown>) {
+  const updates = Object.fromEntries(
+    Object.entries(fields).filter(([key, value]) => SCANNABLE_FIELDS.has(key) && value != null),
+  );
+
+  if (Object.keys(updates).length === 0) {
+    return { error: "Nothing to update." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("clients").update(updates).eq("id", clientId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/clients/${clientId}`);
+  return {};
+}
+
 export async function deleteDocument(clientId: string, documentId: string, storagePath: string) {
   const supabase = await createClient();
 
