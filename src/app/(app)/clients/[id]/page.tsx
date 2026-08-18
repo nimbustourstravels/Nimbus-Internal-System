@@ -5,6 +5,11 @@ import { ClientForm } from "../client-form";
 import { updateClientRecord } from "../actions";
 import { DocumentsSection } from "./documents-section";
 import { VISA_STATUS_LABELS, VISA_STATUS_COLORS, type VisaStatus } from "../../visa/status";
+import {
+  TICKET_STATUS_LABELS,
+  TICKET_STATUS_COLORS,
+  type TicketStatus,
+} from "../../tickets/status";
 
 export default async function ClientProfilePage({
   params,
@@ -29,6 +34,12 @@ export default async function ClientProfilePage({
   const { data: visaCases } = await supabase
     .from("visa_cases")
     .select("id, visa_type, status")
+    .eq("client_id", id)
+    .order("created_at", { ascending: false });
+
+  const { data: tickets } = await supabase
+    .from("tickets")
+    .select("id, booking_ref, flight_info, status")
     .eq("client_id", id)
     .order("created_at", { ascending: false });
 
@@ -91,6 +102,35 @@ export default async function ClientProfilePage({
             <li className="px-4 py-6 text-center text-sm text-neutral-400">
               No visa cases yet.
             </li>
+          )}
+        </ul>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">Tickets</h2>
+          <Link
+            href={`/tickets/new?client_id=${client.id}`}
+            className="text-sm text-neutral-900 underline"
+          >
+            New ticket
+          </Link>
+        </div>
+        <ul className="mt-2 max-w-xl divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+          {tickets?.map((t) => (
+            <li key={t.id} className="flex items-center justify-between px-4 py-2 text-sm">
+              <Link href={`/tickets/${t.id}`} className="text-neutral-900 underline">
+                {t.flight_info || t.booking_ref || "Ticket"}
+              </Link>
+              <span
+                className={`rounded px-2 py-0.5 text-xs ${TICKET_STATUS_COLORS[t.status as TicketStatus]}`}
+              >
+                {TICKET_STATUS_LABELS[t.status as TicketStatus]}
+              </span>
+            </li>
+          ))}
+          {tickets && tickets.length === 0 && (
+            <li className="px-4 py-6 text-center text-sm text-neutral-400">No tickets yet.</li>
           )}
         </ul>
       </div>
