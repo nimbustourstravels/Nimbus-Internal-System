@@ -25,6 +25,9 @@ yarn-error.log*
 # claude code local settings
 .claude/settings.local.json
 
+# tesseract.js downloads its language model to the cwd at runtime
+*.traineddata
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

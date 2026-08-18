@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useActionState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { uploadDocument, deleteDocument, applyScanToClient } from "./documents-actions";
-import { ScanSlot } from "@/components/scan-slot";
 
 type Document = {
   id: string;
@@ -26,38 +24,10 @@ const DOC_TYPES = [
   "Other",
 ];
 
-function DocTypeField() {
-  const [selected, setSelected] = useState(DOC_TYPES[0]);
-
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-neutral-700" htmlFor="doc_type_select">
-        Document type
-      </label>
-      <select
-        id="doc_type_select"
-        value={selected}
-        onChange={(e) => setSelected(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
-      >
-        {DOC_TYPES.map((type) => (
-          <option key={type} value={type}>
-            {type}
-          </option>
-        ))}
-      </select>
-      {selected === "Other" ? (
-        <input
-          name="doc_type"
-          placeholder="Custom type"
-          className="mt-1 block rounded-md border border-neutral-300 px-3 py-2 text-sm"
-        />
-      ) : (
-        <input type="hidden" name="doc_type" value={selected} />
-      )}
-    </div>
-  );
-}
+const OCR_ENDPOINTS: Record<string, string> = {
+  "Passport - Photo Page": "/api/ocr/passport",
+  "Passport - Last Page": "/api/ocr/passport-last-page",
+};
 
 export function DocumentsSection({
   clientId,
@@ -67,40 +37,103 @@ export function DocumentsSection({
   documents: Document[];
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(uploadDocument.bind(null, clientId), {});
+  const [docType, setDocType] = useState(DOC_TYPES[0]);
+  const [customType, setCustomType] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  async function handleScanned(fields: Record<string, unknown>) {
-    await applyScanToClient(clientId, fields);
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fileInput = form.elements.namedItem("file") as HTMLInputElement;
+    const file = fileInput.files?.[0];
+
+    if (!file) {
+      setError("Choose a file to upload.");
+      return;
+    }
+
+    const finalDocType = docType === "Other" ? customType.trim() || "Other" : docType;
+
+    setUploading(true);
+    setError(null);
+    setNotice(null);
+
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+    uploadFormData.append("doc_type", finalDocType);
+
+    const uploadResult = await uploadDocument(clientId, {}, uploadFormData);
+    if (uploadResult.error) {
+      setError(uploadResult.error);
+      setUploading(false);
+      return;
+    }
+
+    const ocrEndpoint = OCR_ENDPOINTS[docType];
+    if (ocrEndpoint) {
+      const ocrFormData = new FormData();
+      ocrFormData.append("file", file);
+
+      try {
+        const res = await fetch(ocrEndpoint, { method: "POST", body: ocrFormData });
+        const json = await res.json();
+
+        if (res.ok) {
+          await applyScanToClient(clientId, json);
+          setNotice("Uploaded and scanned — client fields updated below, please review.");
+        } else {
+          setNotice(`Uploaded, but couldn't scan it: ${json.error ?? "unknown error"}`);
+        }
+      } catch {
+        setNotice("Uploaded, but scanning failed.");
+      }
+    } else {
+      setNotice("Uploaded.");
+    }
+
+    form.reset();
+    setDocType(DOC_TYPES[0]);
+    setCustomType("");
+    setUploading(false);
     router.refresh();
   }
 
   return (
     <div>
       <h2 className="text-sm font-semibold text-neutral-900">Documents</h2>
-
-      <div className="mt-2 flex max-w-3xl flex-col gap-4 sm:flex-row">
-        <ScanSlot
-          id={`scan-front-${clientId}`}
-          label="Scan passport photo page"
-          hint="Updates name, nationality, DOB, passport number, expiry on this client."
-          endpoint="/api/ocr/passport"
-          onScanned={handleScanned}
-        />
-        <ScanSlot
-          id={`scan-last-${clientId}`}
-          label="Scan passport last / address page"
-          hint="Updates address, father's/mother's/spouse's name — review after scanning."
-          endpoint="/api/ocr/passport-last-page"
-          onScanned={handleScanned}
-        />
-      </div>
       <p className="mt-1 text-xs text-neutral-500">
-        Scanning above only updates the client&apos;s fields — use the upload form below to also
-        save the file itself.
+        Uploading a passport photo page or last page also scans it and updates this client&apos;s
+        fields automatically.
       </p>
 
-      <form action={formAction} className="mt-4 flex flex-wrap items-end gap-2">
-        <DocTypeField />
+      <form onSubmit={handleSubmit} className="mt-2 flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-neutral-700" htmlFor="doc_type_select">
+            Document type
+          </label>
+          <select
+            id="doc_type_select"
+            value={docType}
+            onChange={(e) => setDocType(e.target.value)}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          >
+            {DOC_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          {docType === "Other" && (
+            <input
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value)}
+              placeholder="Custom type"
+              className="mt-1 block rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            />
+          )}
+        </div>
         <div className="space-y-1">
           <label className="text-sm font-medium text-neutral-700" htmlFor="file">
             File
@@ -109,14 +142,15 @@ export function DocumentsSection({
         </div>
         <button
           type="submit"
-          disabled={pending}
+          disabled={uploading}
           className="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
         >
-          {pending ? "Uploading…" : "Upload"}
+          {uploading ? "Uploading…" : "Upload"}
         </button>
       </form>
 
-      {state.error && <p className="mt-2 text-sm text-red-600">{state.error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {notice && <p className="mt-2 text-sm text-green-700">{notice}</p>}
 
       <ul className="mt-4 divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
         {documents.map((doc) => (
@@ -124,7 +158,7 @@ export function DocumentsSection({
             <div>
               <span className="text-neutral-900">{doc.doc_type ?? "Document"}</span>
               <span className="ml-2 text-neutral-400">
-                {new Date(doc.uploaded_at).toLocaleDateString()}
+                {new Date(doc.uploaded_at).toLocaleDateString("en-GB")}
               </span>
             </div>
             <div className="flex items-center gap-3">
