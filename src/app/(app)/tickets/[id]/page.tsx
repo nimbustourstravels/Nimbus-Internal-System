@@ -51,6 +51,19 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
           notes: ticket.notes,
         }}
       />
+
+      <div>
+        <Link
+          href={`/tickets/${ticket.id}/arrival-sheet`}
+          className="text-sm text-neutral-900 underline"
+        >
+          Pre-Arrival Info Sheet →
+        </Link>
+        <p className="mt-1 text-xs text-neutral-500">
+          A printable summary of this client&apos;s passport, contact, and flight info — for
+          filling out Air Suvidha or the destination&apos;s arrival form yourself.
+        </p>
+      </div>
     </div>
   );
 }

@@ -21,9 +21,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-neutral-50">
-      <SidebarNav />
+      <div className="no-print">
+        <SidebarNav />
+      </div>
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
+        <header className="no-print flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
           <div className="text-sm text-neutral-500">
             {employee?.name ?? user.email}
             {employee?.role === "admin" && (
