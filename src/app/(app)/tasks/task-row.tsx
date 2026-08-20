@@ -12,7 +12,6 @@ export function TaskRow({
   id,
   description,
   status,
-  dueDate,
   escalated,
   assignedToName,
   clientName,
@@ -21,7 +20,6 @@ export function TaskRow({
   id: string;
   description: string;
   status: string;
-  dueDate: string | null;
   escalated: boolean;
   assignedToName: string;
   clientName: string | null;
@@ -41,7 +39,6 @@ export function TaskRow({
         <p className="mt-0.5 text-xs text-neutral-500">
           {assignedToName}
           {clientName && <> · {clientName}</>}
-          {dueDate && <> · Due {new Date(dueDate).toLocaleDateString("en-GB")}</>}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">

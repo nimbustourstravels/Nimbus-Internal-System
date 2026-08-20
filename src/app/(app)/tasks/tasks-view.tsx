@@ -14,7 +14,7 @@ export async function TasksView() {
     supabase
       .from("tasks")
       .select(
-        "id, description, status, due_date, escalated, assigned_to, employees!tasks_assigned_to_fkey(name), clients(full_name)",
+        "id, description, status, escalated, assigned_to, employees!tasks_assigned_to_fkey(name), clients(full_name)",
       )
       .order("created_at", { ascending: false }),
   ]);
@@ -35,7 +35,6 @@ export async function TasksView() {
             id={t.id}
             description={t.description}
             status={t.status}
-            dueDate={t.due_date}
             escalated={t.escalated}
             assignedToName={
               (t.employees as unknown as { name: string } | null)?.name ?? "Unassigned"

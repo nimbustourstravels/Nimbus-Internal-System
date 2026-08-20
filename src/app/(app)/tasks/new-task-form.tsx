@@ -57,13 +57,6 @@ export function NewTaskForm({
         <input id="description" name="description" required className={fieldClass} />
       </div>
 
-      <div className="space-y-1">
-        <label className={labelClass} htmlFor="due_date">
-          Due date
-        </label>
-        <input id="due_date" name="due_date" type="date" className={fieldClass} />
-      </div>
-
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <button

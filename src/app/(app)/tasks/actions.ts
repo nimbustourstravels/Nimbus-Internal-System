@@ -12,7 +12,6 @@ export async function createTask(
   const assignedTo = String(formData.get("assigned_to") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const clientId = String(formData.get("client_id") ?? "").trim() || null;
-  const dueDate = String(formData.get("due_date") ?? "").trim() || null;
 
   if (!assignedTo) {
     return { error: "Choose who this is assigned to." };
@@ -31,7 +30,6 @@ export async function createTask(
     assigned_by: user?.id,
     client_id: clientId,
     description,
-    due_date: dueDate,
   });
 
   if (error) {
