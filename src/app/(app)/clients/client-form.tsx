@@ -26,12 +26,10 @@ const labelClass = "text-sm font-medium text-neutral-700";
 export function ClientForm({
   action,
   initial,
-  initialGroupName,
   submitLabel,
 }: {
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>;
   initial?: Partial<ClientRecord>;
-  initialGroupName?: string;
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -173,22 +171,6 @@ export function ClientForm({
             defaultValue={initial?.spouse_name ?? ""}
             className={fieldClass}
           />
-        </div>
-
-        <div className="col-span-2 space-y-1">
-          <label className={labelClass} htmlFor="group_name">
-            Family / Group name
-          </label>
-          <input
-            id="group_name"
-            name="group_name"
-            placeholder="e.g. Churiwalla Family"
-            defaultValue={initialGroupName ?? ""}
-            className={fieldClass}
-          />
-          <p className="text-xs text-neutral-500">
-            Clients with the same group name are linked together for quick identification.
-          </p>
         </div>
 
         <div className="col-span-2 space-y-1">

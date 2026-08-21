@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ClientForm } from "../client-form";
 import { updateClientRecord } from "../actions";
 import { DocumentsSection } from "./documents-section";
+import { FamilySection } from "./family-section";
 import { VISA_STATUS_LABELS, VISA_STATUS_COLORS, type VisaStatus } from "../../visa/status";
 import {
   TICKET_STATUS_LABELS,
@@ -57,6 +58,14 @@ export default async function ClientProfilePage({
       ).data
     : [];
 
+  const linkedIds = new Set([id, ...(familyMembers ?? []).map((m) => m.id)]);
+  const candidates = (
+    await supabase
+      .from("clients")
+      .select("id, full_name, dob, passport_number")
+      .order("full_name")
+  ).data?.filter((c) => !linkedIds.has(c.id)) ?? [];
+
   const tickets = (ticketLinks ?? [])
     .map((t) => t.tickets as unknown as {
       id: string;
@@ -97,31 +106,18 @@ export default async function ClientProfilePage({
         key={JSON.stringify(client)}
         action={updateClientRecord.bind(null, client.id)}
         initial={client}
-        initialGroupName={group?.name}
         submitLabel="Save changes"
       />
 
       <DocumentsSection clientId={client.id} documents={documentsWithUrls} />
 
-      {group && (
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900">Family / Group — {group.name}</h2>
-          <ul className="mt-2 max-w-xl divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
-            {familyMembers?.map((m) => (
-              <li key={m.id} className="px-4 py-2 text-sm">
-                <Link href={`/clients/${m.id}`} className="text-neutral-900 underline">
-                  {m.full_name}
-                </Link>
-              </li>
-            ))}
-            {familyMembers && familyMembers.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-neutral-400">
-                No other members in this group yet.
-              </li>
-            )}
-          </ul>
-        </div>
-      )}
+      <FamilySection
+        clientId={client.id}
+        groupId={client.group_id}
+        groupName={group?.name ?? null}
+        members={familyMembers ?? []}
+        candidates={candidates}
+      />
 
       <div>
         <div className="flex items-center justify-between">
