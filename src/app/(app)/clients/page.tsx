@@ -11,7 +11,7 @@ export default async function ClientsPage({
 
   let query = supabase
     .from("clients")
-    .select("id, full_name, nationality, email, phone, flagged_for_followup")
+    .select("id, full_name, nationality, email, phone, flagged_for_followup, client_groups(name)")
     .order("full_name");
 
   if (flagged === "1") {
@@ -54,6 +54,7 @@ export default async function ClientsPage({
           <thead className="bg-neutral-50 text-neutral-500">
             <tr>
               <th className="px-4 py-2 font-medium">Name</th>
+              <th className="px-4 py-2 font-medium">Family / Group</th>
               <th className="px-4 py-2 font-medium">Nationality</th>
               <th className="px-4 py-2 font-medium">Email</th>
               <th className="px-4 py-2 font-medium">Phone</th>
@@ -71,6 +72,9 @@ export default async function ClientsPage({
                     </span>
                   )}
                 </td>
+                <td className="px-4 py-2 text-neutral-600">
+                  {(client.client_groups as unknown as { name: string } | null)?.name ?? "—"}
+                </td>
                 <td className="px-4 py-2 text-neutral-600">{client.nationality ?? "—"}</td>
                 <td className="px-4 py-2 text-neutral-600">{client.email ?? "—"}</td>
                 <td className="px-4 py-2 text-neutral-600">{client.phone ?? "—"}</td>
@@ -83,7 +87,7 @@ export default async function ClientsPage({
             ))}
             {clients && clients.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-neutral-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-neutral-400">
                   No clients yet.
                 </td>
               </tr>

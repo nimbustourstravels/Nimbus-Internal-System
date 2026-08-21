@@ -6,6 +6,31 @@ import { createClient } from "@/lib/supabase/server";
 
 export type ClientFormState = { error?: string };
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function resolveGroupId(
+  supabase: SupabaseServerClient,
+  groupName: string,
+): Promise<string | null> {
+  if (!groupName) return null;
+
+  const { data: existing } = await supabase
+    .from("client_groups")
+    .select("id")
+    .ilike("name", groupName)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  const { data: created, error } = await supabase
+    .from("client_groups")
+    .insert({ name: groupName })
+    .select("id")
+    .single();
+
+  return error ? null : created.id;
+}
+
 function readClientForm(formData: FormData) {
   return {
     full_name: String(formData.get("full_name") ?? "").trim(),
@@ -29,15 +54,18 @@ export async function createClientRecord(
   formData: FormData,
 ): Promise<ClientFormState> {
   const values = readClientForm(formData);
+  const groupName = String(formData.get("group_name") ?? "").trim();
 
   if (!values.full_name) {
     return { error: "Full name is required." };
   }
 
   const supabase = await createClient();
+  const groupId = await resolveGroupId(supabase, groupName);
+
   const { data, error } = await supabase
     .from("clients")
-    .insert(values)
+    .insert({ ...values, group_id: groupId })
     .select("id")
     .single();
 
@@ -55,13 +83,19 @@ export async function updateClientRecord(
   formData: FormData,
 ): Promise<ClientFormState> {
   const values = readClientForm(formData);
+  const groupName = String(formData.get("group_name") ?? "").trim();
 
   if (!values.full_name) {
     return { error: "Full name is required." };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("clients").update(values).eq("id", clientId);
+  const groupId = await resolveGroupId(supabase, groupName);
+
+  const { error } = await supabase
+    .from("clients")
+    .update({ ...values, group_id: groupId })
+    .eq("id", clientId);
 
   if (error) {
     return { error: error.message };

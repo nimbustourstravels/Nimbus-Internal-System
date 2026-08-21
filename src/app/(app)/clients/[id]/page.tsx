@@ -25,23 +25,48 @@ export default async function ClientProfilePage({
     notFound();
   }
 
-  const { data: documents } = await supabase
-    .from("client_documents")
-    .select("id, storage_path, doc_type, uploaded_at")
-    .eq("client_id", id)
-    .order("uploaded_at", { ascending: false });
+  const [{ data: documents }, { data: visaCases }, { data: ticketLinks }, { data: group }] =
+    await Promise.all([
+      supabase
+        .from("client_documents")
+        .select("id, storage_path, doc_type, uploaded_at")
+        .eq("client_id", id)
+        .order("uploaded_at", { ascending: false }),
+      supabase
+        .from("visa_cases")
+        .select("id, visa_type, status")
+        .eq("client_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("ticket_clients")
+        .select("tickets(id, booking_ref, flight_info, status, created_at)")
+        .eq("client_id", id),
+      client.group_id
+        ? supabase.from("client_groups").select("id, name").eq("id", client.group_id).single()
+        : Promise.resolve({ data: null }),
+    ]);
 
-  const { data: visaCases } = await supabase
-    .from("visa_cases")
-    .select("id, visa_type, status")
-    .eq("client_id", id)
-    .order("created_at", { ascending: false });
+  const familyMembers = client.group_id
+    ? (
+        await supabase
+          .from("clients")
+          .select("id, full_name")
+          .eq("group_id", client.group_id)
+          .neq("id", id)
+          .order("full_name")
+      ).data
+    : [];
 
-  const { data: tickets } = await supabase
-    .from("tickets")
-    .select("id, booking_ref, flight_info, status")
-    .eq("client_id", id)
-    .order("created_at", { ascending: false });
+  const tickets = (ticketLinks ?? [])
+    .map((t) => t.tickets as unknown as {
+      id: string;
+      booking_ref: string | null;
+      flight_info: string | null;
+      status: string;
+      created_at: string;
+    } | null)
+    .filter((t): t is NonNullable<typeof t> => t !== null)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
   const documentsWithUrls = await Promise.all(
     (documents ?? []).map(async (doc) => {
@@ -63,17 +88,40 @@ export default async function ClientProfilePage({
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-neutral-900">{client.full_name}</h1>
-        <p className="text-sm text-neutral-500">Client profile</p>
+        <p className="text-sm text-neutral-500">
+          Client profile{group && <> · {group.name}</>}
+        </p>
       </div>
 
       <ClientForm
         key={JSON.stringify(client)}
         action={updateClientRecord.bind(null, client.id)}
         initial={client}
+        initialGroupName={group?.name}
         submitLabel="Save changes"
       />
 
       <DocumentsSection clientId={client.id} documents={documentsWithUrls} />
+
+      {group && (
+        <div>
+          <h2 className="text-sm font-semibold text-neutral-900">Family / Group — {group.name}</h2>
+          <ul className="mt-2 max-w-xl divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+            {familyMembers?.map((m) => (
+              <li key={m.id} className="px-4 py-2 text-sm">
+                <Link href={`/clients/${m.id}`} className="text-neutral-900 underline">
+                  {m.full_name}
+                </Link>
+              </li>
+            ))}
+            {familyMembers && familyMembers.length === 0 && (
+              <li className="px-4 py-6 text-center text-sm text-neutral-400">
+                No other members in this group yet.
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
 
       <div>
         <div className="flex items-center justify-between">
@@ -117,7 +165,7 @@ export default async function ClientProfilePage({
           </Link>
         </div>
         <ul className="mt-2 max-w-xl divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
-          {tickets?.map((t) => (
+          {tickets.map((t) => (
             <li key={t.id} className="flex items-center justify-between px-4 py-2 text-sm">
               <Link href={`/tickets/${t.id}`} className="text-neutral-900 underline">
                 {t.flight_info || t.booking_ref || "Ticket"}
@@ -129,7 +177,7 @@ export default async function ClientProfilePage({
               </span>
             </li>
           ))}
-          {tickets && tickets.length === 0 && (
+          {tickets.length === 0 && (
             <li className="px-4 py-6 text-center text-sm text-neutral-400">No tickets yet.</li>
           )}
         </ul>

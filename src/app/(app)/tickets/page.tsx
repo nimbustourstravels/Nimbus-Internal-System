@@ -17,7 +17,7 @@ export default async function TicketsPage({
 
   let query = supabase
     .from("tickets")
-    .select("id, booking_ref, flight_info, status, clients(full_name)")
+    .select("id, booking_ref, flight_info, status, ticket_clients(clients(full_name))")
     .order("created_at", { ascending: false });
 
   if (status && TICKET_STATUSES.includes(status as TicketStatus)) {
@@ -62,7 +62,7 @@ export default async function TicketsPage({
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-neutral-500">
             <tr>
-              <th className="px-4 py-2 font-medium">Client</th>
+              <th className="px-4 py-2 font-medium">Passengers</th>
               <th className="px-4 py-2 font-medium">Booking Ref</th>
               <th className="px-4 py-2 font-medium">Flight</th>
               <th className="px-4 py-2 font-medium">Status</th>
@@ -73,7 +73,10 @@ export default async function TicketsPage({
             {tickets?.map((t) => (
               <tr key={t.id} className="border-t border-neutral-100">
                 <td className="px-4 py-2 text-neutral-900">
-                  {(t.clients as unknown as { full_name: string } | null)?.full_name ?? "—"}
+                  {(t.ticket_clients as unknown as { clients: { full_name: string } | null }[])
+                    .map((tc) => tc.clients?.full_name)
+                    .filter(Boolean)
+                    .join(", ") || "—"}
                 </td>
                 <td className="px-4 py-2 text-neutral-600">{t.booking_ref ?? "—"}</td>
                 <td className="px-4 py-2 text-neutral-600">{t.flight_info ?? "—"}</td>

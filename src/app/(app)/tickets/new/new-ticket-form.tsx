@@ -7,11 +7,13 @@ const fieldClass =
   "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none";
 const labelClass = "text-sm font-medium text-neutral-700";
 
+type ClientOption = { id: string; full_name: string; group_name: string | null };
+
 export function NewTicketForm({
   clients,
   defaultClientId,
 }: {
-  clients: { id: string; full_name: string }[];
+  clients: ClientOption[];
   defaultClientId?: string;
 }) {
   const [state, formAction, pending] = useActionState(createTicket, {});
@@ -19,25 +21,30 @@ export function NewTicketForm({
   return (
     <form action={formAction} className="max-w-xl space-y-4">
       <div className="space-y-1">
-        <label className={labelClass} htmlFor="client_id">
-          Client *
-        </label>
-        <select
-          id="client_id"
-          name="client_id"
-          required
-          defaultValue={defaultClientId ?? ""}
-          className={fieldClass}
-        >
-          <option value="" disabled>
-            Select a client
-          </option>
+        <label className={labelClass}>Passengers *</label>
+        <div className="max-h-56 overflow-y-auto rounded-md border border-neutral-300 p-2">
           {clients.map((c) => (
-            <option key={c.id} value={c.id}>
+            <label
+              key={c.id}
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-neutral-50"
+            >
+              <input
+                type="checkbox"
+                name="client_ids"
+                value={c.id}
+                defaultChecked={c.id === defaultClientId}
+                className="h-4 w-4 rounded border-neutral-300"
+              />
               {c.full_name}
-            </option>
+              {c.group_name && (
+                <span className="text-xs text-neutral-400">({c.group_name})</span>
+              )}
+            </label>
           ))}
-        </select>
+        </div>
+        <p className="text-xs text-neutral-500">
+          Select everyone travelling on this booking — one ticket can cover a whole family.
+        </p>
       </div>
 
       <div className="space-y-1">

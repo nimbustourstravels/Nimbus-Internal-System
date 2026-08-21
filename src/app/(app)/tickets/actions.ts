@@ -8,7 +8,6 @@ export type TicketFormState = { error?: string };
 
 function readTicketForm(formData: FormData) {
   return {
-    client_id: String(formData.get("client_id") ?? "").trim(),
     booking_ref: String(formData.get("booking_ref") ?? "").trim() || null,
     flight_info: String(formData.get("flight_info") ?? "").trim() || null,
     status: String(formData.get("status") ?? "open").trim(),
@@ -21,9 +20,10 @@ export async function createTicket(
   formData: FormData,
 ): Promise<TicketFormState> {
   const values = readTicketForm(formData);
+  const clientIds = formData.getAll("client_ids").map(String).filter(Boolean);
 
-  if (!values.client_id) {
-    return { error: "Choose a client." };
+  if (clientIds.length === 0) {
+    return { error: "Choose at least one passenger." };
   }
 
   const supabase = await createClient();
@@ -31,6 +31,14 @@ export async function createTicket(
 
   if (error) {
     return { error: error.message };
+  }
+
+  const { error: linkError } = await supabase
+    .from("ticket_clients")
+    .insert(clientIds.map((clientId) => ({ ticket_id: data.id, client_id: clientId })));
+
+  if (linkError) {
+    return { error: linkError.message };
   }
 
   revalidatePath("/tickets");
@@ -62,4 +70,21 @@ export async function updateTicket(
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/tickets");
   return {};
+}
+
+export async function addPassenger(ticketId: string, clientId: string) {
+  if (!clientId) return;
+  const supabase = await createClient();
+  await supabase.from("ticket_clients").insert({ ticket_id: ticketId, client_id: clientId });
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+export async function removePassenger(ticketId: string, clientId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("ticket_clients")
+    .delete()
+    .eq("ticket_id", ticketId)
+    .eq("client_id", clientId);
+  revalidatePath(`/tickets/${ticketId}`);
 }

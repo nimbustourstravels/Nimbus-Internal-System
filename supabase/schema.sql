@@ -15,6 +15,12 @@ create table employees (
   created_at timestamptz not null default now()
 );
 
+create table client_groups (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
 create table clients (
   id uuid primary key default gen_random_uuid(),
   full_name text not null,
@@ -28,6 +34,7 @@ create table clients (
   father_name text,
   mother_name text,
   spouse_name text,
+  group_id uuid references client_groups (id) on delete set null,
   flagged_for_followup boolean not null default false,
   notes text,
   created_at timestamptz not null default now()
@@ -60,12 +67,20 @@ create table visa_cases (
 
 create table tickets (
   id uuid primary key default gen_random_uuid(),
-  client_id uuid not null references clients (id) on delete cascade,
   booking_ref text,
   flight_info text,
   status ticket_status not null default 'open',
   notes text,
   created_at timestamptz not null default now()
+);
+
+-- One PNR / ticket often covers multiple passengers (a family travelling
+-- together), so tickets link to clients through this join table rather
+-- than a single client_id.
+create table ticket_clients (
+  ticket_id uuid not null references tickets (id) on delete cascade,
+  client_id uuid not null references clients (id) on delete cascade,
+  primary key (ticket_id, client_id)
 );
 
 create table tasks (
@@ -121,7 +136,9 @@ create table intake_emails (
 -- as the UI defines finer-grained needs.
 
 alter table employees enable row level security;
+alter table client_groups enable row level security;
 alter table clients enable row level security;
+alter table ticket_clients enable row level security;
 alter table document_checklist_templates enable row level security;
 alter table client_documents enable row level security;
 alter table visa_cases enable row level security;
@@ -141,7 +158,9 @@ $$ language sql security definer stable;
 create policy "employees read all" on employees for select to authenticated using (true);
 create policy "admins manage employees" on employees for all to authenticated using (is_admin()) with check (is_admin());
 
+create policy "employees full access client groups" on client_groups for all to authenticated using (true) with check (true);
 create policy "employees full access clients" on clients for all to authenticated using (true) with check (true);
+create policy "employees full access ticket clients" on ticket_clients for all to authenticated using (true) with check (true);
 create policy "employees full access checklist templates" on document_checklist_templates for all to authenticated using (true) with check (true);
 create policy "employees full access client documents" on client_documents for all to authenticated using (true) with check (true);
 create policy "employees full access visa cases" on visa_cases for all to authenticated using (true) with check (true);

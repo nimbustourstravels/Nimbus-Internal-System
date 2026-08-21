@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EditTicketForm } from "./edit-ticket-form";
+import { PassengersSection } from "./passengers-section";
 import { TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, type TicketStatus } from "../status";
 
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +11,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
 
   const { data: ticket } = await supabase
     .from("tickets")
-    .select("id, booking_ref, flight_info, status, notes, client_id, clients(id, full_name)")
+    .select("id, booking_ref, flight_info, status, notes")
     .eq("id", id)
     .single();
 
@@ -18,17 +19,30 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
     notFound();
   }
 
-  const client = ticket.clients as unknown as { id: string; full_name: string } | null;
+  const [{ data: passengerLinks }, { data: allClients }] = await Promise.all([
+    supabase.from("ticket_clients").select("clients(id, full_name)").eq("ticket_id", id),
+    supabase.from("clients").select("id, full_name").order("full_name"),
+  ]);
+
+  const passengers = (passengerLinks ?? [])
+    .map((p) => p.clients as unknown as { id: string; full_name: string } | null)
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+
+  const passengerIds = new Set(passengers.map((p) => p.id));
+  const addableClients = (allClients ?? []).filter((c) => !passengerIds.has(c.id));
 
   return (
     <div className="space-y-8">
       <div>
         <p className="text-sm text-neutral-500">
-          {client && (
-            <Link href={`/clients/${client.id}`} className="underline">
-              {client.full_name}
-            </Link>
-          )}
+          {passengers.map((p, i) => (
+            <span key={p.id}>
+              {i > 0 && ", "}
+              <Link href={`/clients/${p.id}`} className="underline">
+                {p.full_name}
+              </Link>
+            </span>
+          ))}
         </p>
         <div className="mt-1 flex items-center gap-2">
           <h1 className="text-xl font-semibold text-neutral-900">
@@ -52,6 +66,8 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
         }}
       />
 
+      <PassengersSection ticketId={ticket.id} passengers={passengers} addableClients={addableClients} />
+
       <div>
         <Link
           href={`/tickets/${ticket.id}/arrival-sheet`}
@@ -60,7 +76,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
           Pre-Arrival Info Sheet →
         </Link>
         <p className="mt-1 text-xs text-neutral-500">
-          A printable summary of this client&apos;s passport, contact, and flight info — for
+          A printable summary of each passenger&apos;s passport, contact, and flight info — for
           filling out Air Suvidha or the destination&apos;s arrival form yourself.
         </p>
       </div>
