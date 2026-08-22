@@ -3,11 +3,13 @@ export async function sendEmail({
   to,
   subject,
   text,
+  attachments,
 }: {
   from: string;
   to: string;
   subject: string;
   text: string;
+  attachments?: { filename: string; content: string }[];
 }): Promise<{ error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -20,7 +22,7 @@ export async function sendEmail({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to, subject, text }),
+    body: JSON.stringify({ from, to, subject, text, attachments }),
   });
 
   if (!res.ok) {

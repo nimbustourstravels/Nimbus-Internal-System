@@ -111,6 +111,7 @@ create table email_templates (
   subject text not null,
   body text not null,
   visa_type_scope text,
+  attachment_paths text[] not null default '{}',
   created_at timestamptz not null default now()
 );
 

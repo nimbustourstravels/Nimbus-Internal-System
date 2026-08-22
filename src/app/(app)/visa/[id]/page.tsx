@@ -45,7 +45,7 @@ export default async function VisaCasePage({ params }: { params: Promise<{ id: s
 
   const { data: templates } = await supabase
     .from("email_templates")
-    .select("id, name, subject, body")
+    .select("id, name, subject, body, attachment_paths")
     .order("name");
 
   return (

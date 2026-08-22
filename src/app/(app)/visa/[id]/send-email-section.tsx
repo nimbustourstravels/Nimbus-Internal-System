@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { sendTemplateEmail } from "./send-email-actions";
 
-type Template = { id: string; name: string; subject: string; body: string };
+type Template = {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  attachment_paths: string[];
+};
 
 function fillTemplate(text: string, clientName: string, visaType: string) {
   return text
@@ -29,6 +35,7 @@ export function SendEmailSection({
   const [templateId, setTemplateId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [attachmentNames, setAttachmentNames] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +48,7 @@ export function SendEmailSection({
     if (!template) return;
     setSubject(fillTemplate(template.subject, clientName, visaType));
     setBody(fillTemplate(template.body, clientName, visaType));
+    setAttachmentNames(template.attachment_paths.map((p) => p.split("/").pop() ?? p));
   }
 
   async function handleSend() {
@@ -120,6 +128,12 @@ export function SendEmailSection({
             Auto-filled from the template — edit freely before sending.
           </p>
         </div>
+
+        {attachmentNames.length > 0 && (
+          <p className="text-sm text-neutral-600">
+            📎 Will attach: {attachmentNames.join(", ")}
+          </p>
+        )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
         {notice && <p className="text-sm text-green-700">{notice}</p>}

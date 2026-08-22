@@ -26,11 +26,37 @@ export async function sendTemplateEmail(
   if (!employee?.email) return { error: "Couldn't find your employee email." };
   if (!client?.email) return { error: "This client has no email address on file." };
 
+  let attachments: { filename: string; content: string }[] | undefined;
+
+  if (templateId) {
+    const { data: template } = await supabase
+      .from("email_templates")
+      .select("attachment_paths")
+      .eq("id", templateId)
+      .single();
+
+    const paths = template?.attachment_paths ?? [];
+    if (paths.length > 0) {
+      const downloaded = await Promise.all(
+        paths.map(async (path: string) => {
+          const { data, error: downloadError } = await supabase.storage
+            .from("client-documents")
+            .download(path);
+          if (downloadError || !data) return null;
+          const buffer = Buffer.from(await data.arrayBuffer());
+          return { filename: path.split("/").pop() ?? "attachment.pdf", content: buffer.toString("base64") };
+        }),
+      );
+      attachments = downloaded.filter((a): a is NonNullable<typeof a> => a !== null);
+    }
+  }
+
   const { error } = await sendEmail({
     from: employee.email,
     to: client.email,
     subject,
     text: body,
+    attachments,
   });
 
   if (error) return { error };
