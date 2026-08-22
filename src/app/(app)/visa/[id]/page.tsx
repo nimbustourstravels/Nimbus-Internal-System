@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EditVisaCaseForm } from "./edit-visa-case-form";
+import { SendEmailSection } from "./send-email-section";
 import { VISA_STATUS_LABELS, VISA_STATUS_COLORS, type VisaStatus } from "../status";
 
 export default async function VisaCasePage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +11,9 @@ export default async function VisaCasePage({ params }: { params: Promise<{ id: s
 
   const { data: visaCase } = await supabase
     .from("visa_cases")
-    .select("id, visa_type, status, submission_date, notes, client_id, clients(id, full_name)")
+    .select(
+      "id, visa_type, status, submission_date, notes, client_id, clients(id, full_name, email)",
+    )
     .eq("id", id)
     .single();
 
@@ -18,7 +21,11 @@ export default async function VisaCasePage({ params }: { params: Promise<{ id: s
     notFound();
   }
 
-  const client = visaCase.clients as unknown as { id: string; full_name: string } | null;
+  const client = visaCase.clients as unknown as {
+    id: string;
+    full_name: string;
+    email: string | null;
+  } | null;
 
   const [{ data: checklist }, { data: documents }] = await Promise.all([
     supabase
@@ -35,6 +42,11 @@ export default async function VisaCasePage({ params }: { params: Promise<{ id: s
   const uploadedTypes = new Set(
     (documents ?? []).map((d) => (d.doc_type ?? "").trim().toLowerCase()),
   );
+
+  const { data: templates } = await supabase
+    .from("email_templates")
+    .select("id, name, subject, body")
+    .order("name");
 
   return (
     <div className="space-y-8">
@@ -100,6 +112,17 @@ export default async function VisaCasePage({ params }: { params: Promise<{ id: s
           </p>
         )}
       </div>
+
+      {client && (
+        <SendEmailSection
+          caseId={visaCase.id}
+          clientId={client.id}
+          clientName={client.full_name}
+          clientEmail={client.email}
+          visaType={visaCase.visa_type}
+          templates={templates ?? []}
+        />
+      )}
     </div>
   );
 }
